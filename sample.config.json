@@ -1,0 +1,8 @@
+{
+  "key_file_location": "service_account_file.json",
+  "view_id": "1234566",
+  "reports": "reports.json",
+  "start_date": "2018-01-01T00:00:00Z",
+  "sampling_level": "DEFAULT",
+  "lookback_days": 10
+}
