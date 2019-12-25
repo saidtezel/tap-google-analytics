@@ -7,6 +7,9 @@ import socket
 import hashlib
 from datetime import datetime
 
+from google.oauth2 import service_account
+import googleapiclient.discovery
+
 from apiclient.discovery import build
 from apiclient.errors import HttpError
 
@@ -87,7 +90,11 @@ class Client:
                 user_agent="tap-google-analytics (via singer.io)"
             )
         else:
-            return ServiceAccountCredentials.from_json_keyfile_dict(config['client_secrets'], SCOPES)
+            return service_account.Credentials.from_service_account_file(
+                config['key_file_location'],
+                scopes=SCOPES
+            )
+            # return ServiceAccountCredentials.from_json_keyfile_dict(config['client_secrets'], SCOPES)
 
     def initialize_analyticsreporting(self):
         """Initializes an Analytics Reporting API V4 service object.
@@ -95,7 +102,8 @@ class Client:
         Returns:
             An authorized Analytics Reporting API V4 service object.
         """
-        return build('analyticsreporting', 'v4', credentials=self.credentials)
+        return googleapiclient.discovery.build('analyticsreporting', 'v4', credentials=self.credentials)
+        # return build('analyticsreporting', 'v4', credentials=self.credentials)
 
     def fetch_metadata(self):
         """
