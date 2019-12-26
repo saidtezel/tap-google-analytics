@@ -5,7 +5,7 @@ def load_json(path):
     with open(path) as f:
         return json.load(f)
 
-def generate_sdc_record_hash(view_id, report_date, dimensions):
+def generate_sdc_record_hash(view_id, dimensions):
     """
     Generates a SHA 256 hash to be used as the primary key for records
     associated with a report. This consists of a UTF-8 encoded JSON list
@@ -22,7 +22,7 @@ def generate_sdc_record_hash(view_id, report_date, dimensions):
     """
 
     # NB: Do not change the ordering of this list, it is the source of the PK hash
-    hash_source_data = [view_id, report_date]
+    hash_source_data = [view_id]
     hash_source_data.extend(dimensions)
 
     hash_source_bytes = json.dumps(hash_source_data).encode('utf-8')

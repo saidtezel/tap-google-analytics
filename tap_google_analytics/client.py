@@ -186,15 +186,15 @@ class Client:
 
         return data_type
 
-    def process_stream(self, date, stream):
+    def process_stream(self, start_date, end_date, stream):
         try:
             records = []
             report_definition = self.generate_report_definition(stream)
             nextPageToken = None
 
             while True:
-                single_response = self.query_api(date, report_definition, nextPageToken)
-                (nextPageToken, results) = self.process_response(date, single_response)
+                single_response = self.query_api(start_date, end_date, report_definition, nextPageToken)
+                (nextPageToken, results) = self.process_response(start_date, end_date, single_response)
                 records.extend(results)
 
                 # Keep on looping as long as we have a nextPageToken
@@ -239,7 +239,7 @@ class Client:
                           (HttpError, socket.timeout),
                           max_tries=10,
                           giveup=is_fatal_error)
-    def query_api(self, date, report_definition, pageToken=None):
+    def query_api(self, start_date, end_date, report_definition, pageToken=None):
         """Queries the Analytics Reporting API V4.
 
         Returns:
@@ -250,7 +250,7 @@ class Client:
                 'reportRequests': [
                 {
                     'viewId': self.view_id,
-                    'dateRanges': [{'startDate': date.strftime("%Y-%m-%d"), 'endDate': date.strftime("%Y-%m-%d")}],
+                    'dateRanges': [{'startDate': start_date.strftime("%Y-%m-%d"), 'endDate': end_date.strftime("%Y-%m-%d")}],
                     'samplingLevel': self.sampling_level,
                     'pageSize': '1000',
                     'pageToken': pageToken,
@@ -261,7 +261,7 @@ class Client:
             quotaUser=self.quota_user
         ).execute()
 
-    def process_response(self, date, response):
+    def process_response(self, start_date, end_date, response):
         """Processes the Analytics Reporting API V4 response.
 
         Args:
@@ -279,7 +279,8 @@ class Client:
                ... ... ...
              ]
         """
-        string_iso_date = date.isoformat()
+        start_date_string = start_date.isoformat()
+        end_date_string = end_date.isoformat()
         results = []
 
         try:
@@ -320,9 +321,9 @@ class Client:
                         record[metric_name.replace("ga:","ga_")] = value
 
                 # Also add the [start_date,end_date) used for the report
-                record['report_start_date'] = string_iso_date
-                record['report_end_date'] = string_iso_date
-                record['_sdc_record_hash'] = generate_sdc_record_hash(self.view_id, string_iso_date, dimensions)
+                record['report_start_date'] = start_date_string
+                record['report_end_date'] = end_date_string
+                record['_sdc_record_hash'] = generate_sdc_record_hash(self.view_id, dimensions)
                 record['_sdc_record_timestamp'] = datetime.now().isoformat()
 
                 results.append(record)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from datetime import timedelta
+from datetime import timedelta, date
 import json
 import sys
 import re
@@ -71,6 +71,9 @@ def process_args():
     if 'end_date' in args.config and not args.config.get('end_date'):
         del args.config['end_date']
 
+    if 'date_batching' in args.config and not args.config.get('date_batching') in ['DAY', 'WEEK', 'MONTH']:
+        del args.config['date_batching']
+
     # Process the start_date and end_date so that they define an open date window
     # that ends yesterday if end_date is not defined
     start_date = utils.strptime_to_utc(args.config['start_date'])
@@ -78,11 +81,21 @@ def process_args():
 
     end_date = args.config.get('end_date', utils.strftime(utils.now()))
     end_date = utils.strptime_to_utc(end_date) - timedelta(days=1)
+    end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
+    LOGGER.info(end_date.isoformat())
     args.config['end_date'] = end_date
 
     if end_date < start_date:
         LOGGER.critical("tap-google-analytics: start_date '{}' > end_date '{}'".format(start_date, end_date))
         sys.exit(1)
+
+    date_batching = args.config.get('date_batching', 'DAY')
+    if date_batching == 'DAY':
+        args.config['date_batching'] = 1
+    elif date_batching == 'WEEK':
+        args.config['date_batching'] = 6
+    elif date_batching == 'MONTH':
+        args.config['date_batching'] = 29
 
     # If using a service account, validate that the client_secrets.json file exists and load it
     if args.config.get('key_file_location'):

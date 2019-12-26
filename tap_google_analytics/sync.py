@@ -19,16 +19,29 @@ def generate_report_dates(start_date, end_date):
     for day_offset in range(total_days + 1):
         yield start_date + timedelta(days=day_offset)
 
-def generate_report_dates_new(start_date, end_date):
-    offset = 7
-    total_days = (end_date - start_date).days
-    total_days_range = list(range(total_days))
-    for day_offset in total_days_range[1::offset]:
-        yield (start_date + timedelta(days=day_offset-offset+1), start_date + timedelta(days=day_offset))
-        # yield start_date + timedelta(days=day_offset)
-    if total_days > total_days_range[-1]:
-        diff = total_days - total_days_range[-1]
-        yield (start_date + timedelta(days=total_days-diff), start_date + timedelta(days=total_days))
+def batch_report_dates(start_date, end_date, interval):
+    """
+    Generate tuples with intervals from given range of dates.
+
+    batch_report_dates('2018-01-01', '2019-12-25', 6)
+
+    1st yield = ('2018-01-01', '2018-01-07')
+    2nd yield = ('2018-01-08', '2018-01-14')
+    """
+    date_diff = (end_date - start_date).days
+
+    if date_diff < 30:
+        interval = 0
+
+    span = timedelta(days=interval)
+    stop_date = end_date - span
+
+    while start_date < stop_date:
+        current_date = start_date + span
+        yield start_date, current_date
+        start_date = current_date + timedelta(days=1)
+
+    yield start_date, end_date
 
 
 def get_selected_streams(catalog):
@@ -70,23 +83,25 @@ def sync(config, state, catalog):
             start_date = utils.strptime_to_utc(get_bookmark(state, stream_id, 'last_report_date', default=config['start_date'].strftime('%Y-%m-%d')))
             start_date = start_date - timedelta(days=config.get('lookback_days', 15))
             end_date = config['end_date']
+            date_interval = config['date_batching']
+            LOGGER.info(date_interval)
 
             singer.set_currently_syncing(state, stream_id)
 
             LOGGER.info(f'Syncing stream: {stream_id}')
             LOGGER.info(f'Will sync data from {start_date.isoformat()} until {end_date.isoformat()}')
 
-            for date in generate_report_dates(start_date, end_date):
-                LOGGER.info(f'Request for {date.isoformat()} started.')
+            for start_date, end_date in batch_report_dates(start_date, end_date, date_interval):
+                LOGGER.info(f'Request for {start_date.isoformat()} to {end_date.isoformat()} started.')
                 start = timer()
                 try:
-                    results = client.process_stream(date, report_definition)
+                    results = client.process_stream(start_date, end_date, report_definition)
 
                     # we write the schema message after we are sure that we could
                     #  fetch records without errors
                     singer.write_schema(stream_id, stream_schema, key_properties)
                     singer.write_records(stream_id, results)
-                    singer.write_bookmark(state, stream_id, 'last_report_date', date.strftime("%Y-%m-%d"))
+                    singer.write_bookmark(state, stream_id, 'last_report_date', end_date.strftime("%Y-%m-%d"))
                     singer.write_state(state)
                 except GaInvalidArgumentError as e:
                     errors_encountered = True
@@ -109,7 +124,8 @@ def sync(config, state, catalog):
                     LOGGER.debug("Error: '{}'.".format(e))
                     sys.exit(1)
                 end = timer()
-                LOGGER.info(f'Request for {date.isoformat()} finished.\nIt took {end-start} seconds.')
+                LOGGER.info(f'Request for {start_date.isoformat()} to {end_date.isoformat()} finished.')
+                LOGGER.info(f'API query took {(end-start):.2f} seconds.')
 
             singer.set_currently_syncing(state, '')
             singer.write_state(state)
