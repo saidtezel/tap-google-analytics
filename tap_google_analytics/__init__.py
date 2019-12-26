@@ -82,7 +82,6 @@ def process_args():
     end_date = args.config.get('end_date', utils.strftime(utils.now()))
     end_date = utils.strptime_to_utc(end_date) - timedelta(days=1)
     end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
-    LOGGER.info(end_date.isoformat())
     args.config['end_date'] = end_date
 
     if end_date < start_date:
@@ -91,7 +90,7 @@ def process_args():
 
     date_batching = args.config.get('date_batching', 'DAY')
     if date_batching == 'DAY':
-        args.config['date_batching'] = 1
+        args.config['date_batching'] = 0
     elif date_batching == 'WEEK':
         args.config['date_batching'] = 6
     elif date_batching == 'MONTH':
