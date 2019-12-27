@@ -7,6 +7,8 @@ import socket
 import hashlib
 from datetime import datetime
 
+from timeit import default_timer as timer
+
 from google.oauth2 import service_account
 import googleapiclient.discovery
 

@@ -1,5 +1,3 @@
-import json
-import hashlib
 import sys
 from datetime import timedelta
 from timeit import default_timer as timer
@@ -21,7 +19,7 @@ def generate_report_dates(start_date, end_date):
 
 def batch_report_dates(start_date, end_date, interval):
     """
-    Generate tuples with intervals from given range of dates.
+    Generate tuples with intervals from a given range of dates.
 
     batch_report_dates('2018-01-01', '2019-12-25', 6)
 
@@ -30,6 +28,7 @@ def batch_report_dates(start_date, end_date, interval):
     """
     date_diff = (end_date - start_date).days
 
+    # If the date range is smaller than 30 days, opt for daily batching.
     if date_diff < 30:
         interval = 0
 
@@ -84,12 +83,14 @@ def sync(config, state, catalog):
             start_date = start_date - timedelta(days=config.get('lookback_days', 15))
             end_date = config['end_date']
             date_interval = config['date_batching']
-            LOGGER.info(date_interval)
-
-            singer.set_currently_syncing(state, stream_id)
 
             LOGGER.info(f'Syncing stream: {stream_id}')
             LOGGER.info(f'Will sync data from {start_date.isoformat()} until {end_date.isoformat()}')
+
+            # Sets the currently sycing stream in state
+            singer.set_currently_syncing(state, stream_id)
+            # Writes the schema for the current stream
+            singer.write_schema(stream_id, stream_schema, key_properties)
 
             for start_date, end_date in batch_report_dates(start_date, end_date, date_interval):
                 LOGGER.info(f'Request for {start_date.isoformat()} to {end_date.isoformat()} started.')
@@ -97,10 +98,9 @@ def sync(config, state, catalog):
                 try:
                     results = client.process_stream(start_date, end_date, report_definition)
 
-                    # we write the schema message after we are sure that we could
-                    #  fetch records without errors
-                    singer.write_schema(stream_id, stream_schema, key_properties)
+                    # Writes individual items from results array as records
                     singer.write_records(stream_id, results)
+                    # Updates the stream bookmark with the latest report timestamp
                     singer.write_bookmark(state, stream_id, 'last_report_date', end_date.strftime("%Y-%m-%d"))
                     singer.write_state(state)
                 except GaInvalidArgumentError as e:

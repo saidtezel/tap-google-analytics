@@ -15,15 +15,39 @@ Based on the report(s) definition, it generates a valid Catalog that follows the
 
 This tap also supports granular control over how the data is queried from Google Analytics.
 
-### Daily Report Batching
+### Daily/Weekly/Monthly Report Batching
 
-This tap is designed to query data from Google Analytics API in daily instances, regardless of whether you have defined a date item within your report definition.
+This tap gives you the option to define batching config for the date ranges in your reports.
 
-For example, if you defined your date ranges to be 1 Jan - 31 Dec 2019, this tap will query data for individual days in the year.
+By default, it will query data from Google Analytics API in daily instances, regardless of whether you have defined a date column within your report definition. However, you can alter the batch sizes in the tap config using the `date_batching` key. This can be assigned as `DAY`, `WEEK` or `MONTH`. If it's omitted, the tap will do daily querying.
 
-Daily report batching is particularly useful for reports with large date ranges, because it minimises the risk of data returned from Google Analytics API to be sampled, hence increasing the accuracy of returned data.
+#### Example
 
-The fact that we are making separate queries for each day from the API also enables the opportunity to log the last day queried in the state, enabling us to run incremental queries in the tap. This way, if an error occurs during a single run, we can still pick up from where we left based on the stream log the next time we run it.
+Consider that you're defining a tap to pull date from 2018-01-01 to 2019-12-31.
+
+**With daily batching:** The tap will make individual API requests for each day:
+
+- First iteration: 2018-01-01 to 2018-01-01
+- Second iteration: 2018-01-02 to 2018-01-02
+- ...
+
+**With weekly batching:** The tap will make individual API requests for every 7 days:
+
+- First iteration: 2018-01-01 to 2018-01-07
+- Second iteration: 2018-01-08 to 2018-01-14
+- ...
+
+**With monthly batching:** The tap will make individual API requests for every 30 days:
+
+- First iteration: 2018-01-01 to 2018-01-30
+- Second iteration: 2018-01-31 to 2018-03-01
+- ...
+
+In runtime, one exception to this configuration is when we are running incremental updates. If the total number of days defined in the report is less than 30, the tap will still query data based on daily batching.
+
+Date batching for reports is particularly useful for reports with large date ranges, because it minimises the risk of data returned from Google Analytics API to be sampled, hence increasing the accuracy of returned data.
+
+The fact that we are making separate queries for batched date ranges from the API also enables the opportunity to log the last day queried in the state, enabling us to run incremental queries in the tap. This way, if an error occurs during a single run, we can still pick up from where we left based on the stream log the next time we run it.
 
 ### Incremental Queries
 
@@ -128,7 +152,8 @@ A sample config for `tap-google-analytics` might look like this.
   "start_date": "2018-01-01T00:00:00Z",
   "end_date": "2019-01-01T00:00:00Z",
   "sampling_level": "DEFAULT",
-  "lookback_days": 10
+  "lookback_days": 10,
+  "date_batching": "WEEK"
 }
 ```
 
@@ -159,6 +184,7 @@ A sample config for `tap-google-analytics` might look like this.
 - `end_date`: The end date for the report, formatted yyyy-mm-ddThh:mm. If omitted, it will default to yesterday.
 - `sampling_level`: Sampling level to be used for GA API queries. Can be DEFAULT, SMALL or LARGE. If omitted, it will default to `DEFAULT`.
 - `lookback_days`: Number of days prior to the report state date the tap should look back. If omitted, it will default to 15.
+- `date_batching`: How the report date range should be batched to run API queries on smaller chunks. Can be `DAY`, `WEEK` or `MONTH`.
 
 ---
 ## Stream Definitions
@@ -230,6 +256,6 @@ The following decisions and considerations have been done while building the tap
 
 - By default, all the reports configured within the report definition file is included while syncing streams. If you'd like to stop replicating a specific report, you can just remote if from the report definitions file.
 - All the metric and dimension names are changed in the output, such as `ga:date > ga_date`.
-- Two additional properties, `report_start_date` and `report_end_date` are added in the tap schema and outputs. Since we are querying data from Google Analytics API in daily batches, these properties will actually act as daily timestamps for each row. This means that you don't have to define an additional `ga:date` dimension in your report definitions.
-- An additional `_sdc_record_hash` property is added in the schema and output. This is a hash value for the array `[view_id, report_start_date, dimensionX, dimensionY...]` and is also defined as a key property in the stream schema. It could be used in your target database to update existing values.
+- Two additional properties, `report_start_date` and `report_end_date` are added in the tap schema and outputs.
+- An additional `_sdc_record_hash` property is added in the schema and output. This is a hash value for the array `[view_id, list of dimensions]` and is also defined as a key property in the stream schema. It could be used in your target database to update existing values.
 - An additional `_sdc_record_timestamp` property is added in the schema and output. This is the timestamp of the Google Analytics API.
