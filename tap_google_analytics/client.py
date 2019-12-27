@@ -154,22 +154,21 @@ class Client:
         """
         try:
             if type == 'dimension':
+                # Custom GA dimensions that are not part of self.dimensions_ref
+                # They are almost always strings
                 if attribute.startswith(('ga:dimension', 'ga:customVarName', 'ga:customVarValue')):
-                    # Custom Google Analytics Dimensions that are not part of
-                    #  self.dimensions_ref. They are always strings
                     return 'string'
 
                 attr_type = self.dimensions_ref[attribute]
             elif type == 'metric':
-                # Custom Google Analytics Metrics {ga:goalXXStarts, ga:metricXX, ... }
-                # We always treat them as as strings as we can not be sure of their data type
+                # Custom GA metrics that are not part of self.metrics_ref
+                # They can be integer of number but we'll assume they're numbers just to be on the safe side.
                 if attribute.startswith('ga:goal') and attribute.endswith(('Starts', 'Completions', 'Value', 'ConversionRate', 'Abandons', 'AbandonRate')):
-                    return 'string'
+                    return 'number'
                 elif attribute.startswith('ga:searchGoal') and attribute.endswith('ConversionRate'):
-                    # Custom Google Analytics Metrics ga:searchGoalXXConversionRate
-                    return 'string'
+                    return 'number'
                 elif attribute.startswith(('ga:metric', 'ga:calcMetric')):
-                    return 'string'
+                    return 'number'
 
                 attr_type = self.metrics_ref[attribute]
             else:
@@ -183,7 +182,7 @@ class Client:
 
         if attr_type == 'INTEGER':
             data_type = 'integer'
-        elif attr_type == 'FLOAT' or attr_type == 'PERCENT' or attr_type == 'TIME':
+        elif attr_type == 'FLOAT' or attr_type == 'PERCENT' or attr_type == 'TIME' or attr_type == 'CURRENCY':
             data_type = 'number'
 
         return data_type
