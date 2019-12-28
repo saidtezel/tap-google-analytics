@@ -7,8 +7,6 @@ import socket
 import hashlib
 from datetime import datetime
 
-from timeit import default_timer as timer
-
 from google.oauth2 import service_account
 import googleapiclient.discovery
 
@@ -253,7 +251,7 @@ class Client:
                     'viewId': self.view_id,
                     'dateRanges': [{'startDate': start_date.strftime("%Y-%m-%d"), 'endDate': end_date.strftime("%Y-%m-%d")}],
                     'samplingLevel': self.sampling_level,
-                    'pageSize': '1000',
+                    'pageSize': '100000',
                     'pageToken': pageToken,
                     'metrics': report_definition['metrics'],
                     'dimensions': report_definition['dimensions'],
