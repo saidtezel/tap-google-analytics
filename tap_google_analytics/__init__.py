@@ -80,7 +80,8 @@ def process_args():
     args.config['start_date'] = start_date
 
     end_date = args.config.get('end_date', utils.strftime(utils.now()))
-    end_date = utils.strptime_to_utc(end_date) - timedelta(days=1)
+    end_date = utils.strptime_to_utc(end_date)
+    # end_date = utils.strptime_to_utc(end_date) - timedelta(days=1)
     end_date = end_date.replace(hour=0, minute=0, second=0, microsecond=0)
     args.config['end_date'] = end_date
 
