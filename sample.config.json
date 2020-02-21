@@ -4,5 +4,6 @@
   "reports": "reports.json",
   "start_date": "2018-01-01T00:00:00Z",
   "sampling_level": "DEFAULT",
+  "segment_id": "gaid::byR_KqXDRBSWECFupQI5eQ",
   "lookback_days": 10
 }
