@@ -95,7 +95,6 @@ def sync(config, state, catalog):
 
             for start_date, end_date in batch_report_dates(start_date, end_date, date_interval):
                 LOGGER.info(f'Request for {start_date.isoformat()} to {end_date.isoformat()} started.')
-                LOGGER.info(f'Trying for segment ID: {segment_id}')
                 start = timer()
                 try:
                     results = client.process_stream(start_date, end_date, report_definition, segment_id)

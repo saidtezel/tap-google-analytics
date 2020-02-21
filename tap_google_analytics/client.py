@@ -186,7 +186,6 @@ class Client:
         return data_type
 
     def process_stream(self, start_date, end_date, stream, segment_id):
-        LOGGER.info(f'process_stream segment_id: {segment_id}')
         try:
             records = []
             report_definition = self.generate_report_definition(stream)
