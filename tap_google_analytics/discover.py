@@ -158,7 +158,7 @@ class Report:
     def validate_dimensions(self, dimensions):
         # check that all the dimensions are proper Google Analytics Dimensions
         for dimension in dimensions:
-            if not dimension.startswith(('ga:dimension', 'ga:customVarName', 'ga:customVarValue')) \
+            if not dimension.startswith(('ga:dimension', 'ga:customVarName', 'ga:customVarValue', 'ga:segment')) \
                and dimension not in self.client.dimensions_ref:
                 LOGGER.critical("'{}' is not a valid Google Analytics dimension".format(dimension))
                 LOGGER.info("For details see https://developers.google.com/analytics/devguides/reporting/core/dimsmets")

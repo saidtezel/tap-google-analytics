@@ -154,7 +154,7 @@ class Client:
             if type == 'dimension':
                 # Custom GA dimensions that are not part of self.dimensions_ref
                 # They are almost always strings
-                if attribute.startswith(('ga:dimension', 'ga:customVarName', 'ga:customVarValue')):
+                if attribute.startswith(('ga:dimension', 'ga:customVarName', 'ga:customVarValue', 'ga:segment')):
                     return 'string'
 
                 attr_type = self.dimensions_ref[attribute]
@@ -170,10 +170,10 @@ class Client:
 
                 attr_type = self.metrics_ref[attribute]
             else:
-                LOGGER.critical(f"Unsuported GA type: {type}")
+                LOGGER.critical(f"Unsupported GA type: {type}")
                 sys.exit(1)
         except KeyError:
-            LOGGER.critical(f"Unsuported GA {type}: {attribute}")
+            LOGGER.critical(f"Unsupported GA {type}: {attribute}")
             sys.exit(1)
 
         data_type = 'string'
@@ -185,14 +185,14 @@ class Client:
 
         return data_type
 
-    def process_stream(self, start_date, end_date, stream):
+    def process_stream(self, start_date, end_date, stream, segment_id):
         try:
             records = []
             report_definition = self.generate_report_definition(stream)
             nextPageToken = None
 
             while True:
-                single_response = self.query_api(start_date, end_date, report_definition, nextPageToken)
+                single_response = self.query_api(start_date, end_date, report_definition, nextPageToken, segment_id)
                 (nextPageToken, results) = self.process_response(start_date, end_date, single_response)
                 records.extend(results)
 
@@ -238,25 +238,30 @@ class Client:
                           (HttpError, socket.timeout),
                           max_tries=10,
                           giveup=is_fatal_error)
-    def query_api(self, start_date, end_date, report_definition, pageToken=None):
+    def query_api(self, start_date, end_date, report_definition, pageToken=None, segment_id=None):
         """Queries the Analytics Reporting API V4.
 
         Returns:
             The Analytics Reporting API V4 response.
         """
+        request_body = {
+            'reportRequests': [
+            {
+                'viewId': self.view_id,
+                'dateRanges': [{'startDate': start_date.strftime("%Y-%m-%d"), 'endDate': end_date.strftime("%Y-%m-%d")}],
+                'samplingLevel': self.sampling_level,
+                'pageSize': '100000',
+                'pageToken': pageToken,
+                'metrics': report_definition['metrics'],
+                'dimensions': report_definition['dimensions']
+            }]
+        }
+        if segment_id:
+            request_body['reportRequests'][0]['segments'] = [{
+                'segmentId': segment_id
+            }]
         return self.analytics.reports().batchGet(
-            body={
-                'reportRequests': [
-                {
-                    'viewId': self.view_id,
-                    'dateRanges': [{'startDate': start_date.strftime("%Y-%m-%d"), 'endDate': end_date.strftime("%Y-%m-%d")}],
-                    'samplingLevel': self.sampling_level,
-                    'pageSize': '100000',
-                    'pageToken': pageToken,
-                    'metrics': report_definition['metrics'],
-                    'dimensions': report_definition['dimensions'],
-                }]
-            },
+            body=request_body,
             quotaUser=self.quota_user
         ).execute()
 
@@ -319,9 +324,15 @@ class Client:
 
                         record[metric_name.replace("ga:","ga_")] = value
 
-                # Also add the [start_date,end_date) used for the report
+                # Also add the [start_date,end_date] used for the report
                 record['report_start_date'] = start_date_string
                 record['report_end_date'] = end_date_string
+                
+                # If there is no date within requested dimensions, append the report_start_date to the dimensionHeaders
+                # to make sure that the record hash includes a unique report timestamp
+                if 'ga:date' not in dimensionHeaders:
+                    dimensions.append(start_date_string)
+
                 record['_sdc_record_hash'] = generate_sdc_record_hash(self.view_id, dimensions)
                 record['_sdc_record_timestamp'] = datetime.now().isoformat()
 

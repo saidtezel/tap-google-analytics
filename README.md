@@ -72,7 +72,14 @@ The lookback window optionally can be changed within the tap's config file, or b
 
 It is, **however**, important to point out that since we are refetching data prior to the report start date, this will likely result in duplications on the target database.
 
----
+### Segment Support
+
+It is also possible to query data for a specific segment ID on Google Analytics. At the moment only one segment can be used for reporting, so if you are planning on querying data for different segments across a GA view, we recommend creating separate pipelines for each segment.
+
+To enable segment support, you will need to make two changes in report configuration:
+
+1. Update the tap config file and add a `segment_id` key with the segment ID as its value (gaid::xxxxx)
+2. Within the report config file (where you define the report definitions) make sure to include `ga:segment` as a dimension. 
 
 ## Install the Tap
 
@@ -152,6 +159,7 @@ A sample config for `tap-google-analytics` might look like this.
   "start_date": "2018-01-01T00:00:00Z",
   "end_date": "2019-01-01T00:00:00Z",
   "sampling_level": "DEFAULT",
+  "segment_id": "gaid::xxxxx",
   "lookback_days": 10,
   "date_batching": "WEEK"
 }
@@ -183,6 +191,7 @@ A sample config for `tap-google-analytics` might look like this.
 - `reports`: Path for the local JSON file which contains report definitions. If omitted, it will use the default definitions located at _/defaults/default_report_definitions.json_
 - `end_date`: The end date for the report, formatted yyyy-mm-ddThh:mm. If omitted, it will default to yesterday.
 - `sampling_level`: Sampling level to be used for GA API queries. Can be DEFAULT, SMALL or LARGE. If omitted, it will default to `DEFAULT`.
+- `segment_id`: Segment ID for the specific segment you'd like to query data.
 - `lookback_days`: Number of days prior to the report state date the tap should look back. If omitted, it will default to 15.
 - `date_batching`: How the report date range should be batched to run API queries on smaller chunks. Can be `DAY`, `WEEK` or `MONTH`.
 

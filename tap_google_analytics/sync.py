@@ -83,6 +83,7 @@ def sync(config, state, catalog):
             start_date = start_date - timedelta(days=config.get('lookback_days', 15))
             end_date = config['end_date']
             date_interval = config['date_batching']
+            segment_id = config.get('segment_id', None)
 
             LOGGER.info(f'Syncing stream: {stream_id}')
             LOGGER.info(f'Will sync data from {start_date.isoformat()} until {end_date.isoformat()}')
@@ -96,7 +97,7 @@ def sync(config, state, catalog):
                 LOGGER.info(f'Request for {start_date.isoformat()} to {end_date.isoformat()} started.')
                 start = timer()
                 try:
-                    results = client.process_stream(start_date, end_date, report_definition)
+                    results = client.process_stream(start_date, end_date, report_definition, segment_id)
 
                     # Writes individual items from results array as records
                     singer.write_records(stream_id, results)
@@ -124,8 +125,7 @@ def sync(config, state, catalog):
                     LOGGER.debug("Error: '{}'.".format(e))
                     sys.exit(1)
                 end = timer()
-                LOGGER.info(f'Request for {start_date.isoformat()} to {end_date.isoformat()} finished.')
-                LOGGER.info(f'API query took {(end-start):.2f} seconds.')
+                LOGGER.info(f'Request for {start_date.isoformat()} to {end_date.isoformat()} finished in {(end-start):.2f}.')
 
             singer.set_currently_syncing(state, '')
             singer.write_state(state)
